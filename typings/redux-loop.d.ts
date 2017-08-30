@@ -1,5 +1,5 @@
 declare module 'redux-loop' {
-  import { Action, ReducersMapObject, StoreEnhancer, Store } from 'redux';
+  import { Action, StoreEnhancer, Store } from 'redux';
 
   interface StoreCreator {
     <S, T>(
@@ -22,18 +22,32 @@ declare module 'redux-loop' {
     actionToDispatch: A;
   }
 
+  interface BatchCmd<AppAction extends Action, F extends Function> {
+    type: 'BATCH';
+    cmds: CmdType<AppAction, F>;
+  }
+
   interface RunCmd<F extends Function> {
     type: 'RUN';
     func: F;
-    options: {};
+    options: {
+      args: any[];
+      failActionCreator: Function;
+      successActionCreator: Function;
+    };
+  }
+
+  interface SequenceCmd<AppAction extends Action, F extends Function> {
+    type: 'Sequence';
+    cmds: CmdType<AppAction, F>;
   }
 
   type CmdType<AppAction extends Action, F extends Function> =
+    | ActionCmd<AppAction>
+    | BatchCmd<AppAction, F>
     | NoneCmd
     | RunCmd<F>
-    // | BatchCmd<AppAction>
-    // | SequenceCmd<AppAction>
-    | ActionCmd<AppAction>;
+    | SequenceCmd<AppAction, F>;
 
   function install<AppState>(): StoreEnhancer<AppState>;
 
@@ -43,14 +57,17 @@ declare module 'redux-loop' {
   ): [State, CmdType<AppAction, F>];
 
   class Cmd {
-    static none: () => NoneCmd;
+    static readonly none: NoneCmd;
     static action: <AppAction extends Action>(
       action: AppAction
     ) => ActionCmd<AppAction>;
-    static run: <F extends Function>(f: F) => any;
+    static run: <F extends Function>(f: F) => RunCmd<F>;
     static batch: <AppAction extends Action, F extends Function>(
-      cmds: CmdType<AppAction, F>
-    ) => any;
+      cmds: CmdType<AppAction, F>[]
+    ) => BatchCmd<AppAction, F>;
+    static sequence: <AppAction extends Action, F extends Function>(
+      cmds: CmdType<AppAction, F>[]
+    ) => SequenceCmd<AppAction, F>;
   }
 
   interface StrictReducerMapObject<T> {

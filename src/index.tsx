@@ -5,7 +5,13 @@ import { EnhancedReducer, install, loop, Cmd, CmdType } from 'redux-loop';
 
 // UPDATE
 
-type Action = { type: 'INCREMENT' };
+type Action =
+  | { type: 'INCREMENT' }
+  | { type: 'LOG' }
+  | { type: 'LOG_2' }
+  | { type: 'BATCH_LOG' };
+
+const log = (): Action => ({ type: 'LOG' });
 
 const reducer: EnhancedReducer<
   number,
@@ -13,7 +19,30 @@ const reducer: EnhancedReducer<
 > = (state = 0, action: Action) => {
   switch (action.type) {
     case 'INCREMENT':
-      return loop(state + 1, Cmd.none());
+      return loop(state + 1, Cmd.action(log()));
+    case 'LOG':
+      // tslint:disable-next-line:no-console
+      console.log('running this');
+      return loop(state, Cmd.none);
+    case 'LOG_2':
+      // tslint:disable-next-line:no-console
+      return loop(state, Cmd.run(() => console.log(212121)));
+    case 'BATCH_LOG':
+      return loop(
+        state,
+        Cmd.batch([
+          // tslint:disable-next-line:no-console
+          Cmd.run(() => console.log(212121)),
+          Cmd.action(log()),
+          Cmd.none,
+          Cmd.sequence([
+            // tslint:disable-next-line:no-console
+            Cmd.run(() => console.log(212121)),
+            Cmd.action(log()),
+            Cmd.none
+          ])
+        ])
+      );
     default:
       return state;
   }
@@ -38,12 +67,12 @@ const Counter = ({
 
 const store = createStore(reducer, 0, install());
 const rootEl = document.getElementById('root');
-const initialState = store.getState() as number;
+const getState = () => store.getState() as number;
 
 const render = () => {
   ReactDOM.render(
     <Counter
-      value={initialState}
+      value={getState()}
       onIncrement={() => store.dispatch({ type: 'INCREMENT' })}
     />,
     rootEl
